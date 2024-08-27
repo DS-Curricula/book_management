@@ -1,8 +1,9 @@
 import sqlite3
 from typing import List
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from models.book import Book, BookCreate
 from database import get_db_connection
+from auth.security import get_api_key
 
 router = APIRouter()
 
@@ -30,7 +31,7 @@ def get_books():
 
 
 @router.post("/", response_model=Book)
-def create_book(book: BookCreate):
+def create_book(book: BookCreate, _: str = Depends(get_api_key)):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -52,12 +53,13 @@ def create_book(book: BookCreate):
 
 
 @router.put("/{book_id}", response_model=Book)
-def update_book(book_id: int, book: BookCreate):
+def update_book(book_id: int, book: BookCreate, _: str = Depends(get_api_key)):
     conn = get_db_connection()
     cursor = conn.cursor()
     genres = ",".join(book.genres)  # Convert list of genre names to a comma-separated string
     cursor.execute(
-        "UPDATE books SET title = ?, author_id = ?, book_link = ?, genres = ?, average_rating = ?, published_year = ? WHERE id = ?",
+        "UPDATE books SET title = ?, author_id = ?, book_link = ?, genres = ?, average_rating = ?, published_year = ? "
+        "WHERE id = ?",
         (book.title, book.author_id, book.book_link, genres, book.average_rating, book.published_year, book_id))
     if cursor.rowcount == 0:
         conn.close()
@@ -68,7 +70,7 @@ def update_book(book_id: int, book: BookCreate):
 
 
 @router.delete("/{book_id}", response_model=dict)
-def delete_book(book_id: int):
+def delete_book(book_id: int, _: str = Depends(get_api_key)):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM books WHERE id = ?", (book_id,))

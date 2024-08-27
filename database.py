@@ -88,49 +88,4 @@ if __name__ == "__main__":
     insert_data(books_dict, authors)
 
 
-# Function to initialize the database tables
-def initialize_database():
-    conn = get_db_connection()
-    cursor = conn.cursor()
 
-    # Create the authors table if it doesn't exist
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS authors (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE
-        )
-    ''')
-
-    # Create the genres table if it doesn't exist
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS genres (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE
-        )
-    ''')
-
-    # Create the books table if it doesn't exist
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS books (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            author_id INTEGER NOT NULL,
-            average_rating REAL,
-            genres TEXT,
-            year INTEGER,
-            FOREIGN KEY (author_id) REFERENCES authors(id)
-        )
-    ''')
-
-    # Create the users table if it doesn't exist
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL
-        )
-    ''')
-
-    # Commit the changes and close the connection
-    conn.commit()
-    conn.close()
