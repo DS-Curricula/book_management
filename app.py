@@ -244,26 +244,28 @@ def visualizations_dashboard():
         max_year = int(df_books['published_year'].max())
         selected_year = st.sidebar.slider("Select Published Year", min_value=min_year, max_value=max_year, value=(min_year, max_year))
 
-        # Filter by Average Rating (fixed range from 0.1 to 5)
-        selected_rating = st.sidebar.slider("Select Average Rating", min_value=0.1, max_value=5.0, value=(0.1, 5.0), step=0.1)
+        # Filter by Average Rating (fixed range from 0.0 to 5)
+        selected_rating = st.sidebar.slider("Select Average Rating", min_value=0.0, max_value=5.0, value=(0.0, 5.0), step=0.1)
 
         # Check if any filters are applied
-        filters_applied = selected_author != "All" or selected_year != (min_year, max_year) or selected_rating != (0.1, 5.0)
+        filters_applied = selected_author != "All" or selected_year != (min_year, max_year) or selected_rating != (0.0, 5.0)
 
         # Apply Filters Button
         if st.sidebar.button("Apply Filters") or not filters_applied:
             # Apply filters if any are set
+            filtered_books = df_books.copy()  # Default to showing all data if no filters applied
+
             if filters_applied:
                 if selected_author != "All":
-                    df_books = df_books[df_books['author'] == selected_author]
+                    filtered_books = filtered_books[filtered_books['author'] == selected_author]
 
-                df_books = df_books[(df_books['published_year'] >= selected_year[0]) & (df_books['published_year'] <= selected_year[1])]
-                df_books = df_books[(df_books['average_rating'] >= selected_rating[0]) & (df_books['average_rating'] <= selected_rating[1])]
+                filtered_books = filtered_books[(filtered_books['published_year'] >= selected_year[0]) & (filtered_books['published_year'] <= selected_year[1])]
+                filtered_books = filtered_books[(filtered_books['average_rating'] >= selected_rating[0]) & (filtered_books['average_rating'] <= selected_rating[1])]
 
             # Visualization 1: Books by Year
-            if not df_books.empty:
+            if not filtered_books.empty:
                 st.subheader(f"Books by Year")
-                books_by_year = df_books.groupby('published_year').size().reset_index(name='Count')
+                books_by_year = filtered_books.groupby('published_year').size().reset_index(name='Count')
                 fig_years = px.bar(
                     books_by_year,
                     x='published_year',
@@ -284,7 +286,7 @@ def visualizations_dashboard():
 
                 # Visualization 2: Books by Author
                 st.subheader(f"Books by Author")
-                books_by_author = df_books.groupby('author').size().reset_index(name='Count')
+                books_by_author = filtered_books.groupby('author').size().reset_index(name='Count')
                 fig_authors = px.bar(
                     books_by_author,
                     x='author',
@@ -304,7 +306,7 @@ def visualizations_dashboard():
 
                 # Visualization 3: Books by Average Rating
                 st.subheader(f"Books by Average Rating")
-                books_by_rating = df_books.groupby('average_rating').size().reset_index(name='Count')
+                books_by_rating = filtered_books.groupby('average_rating').size().reset_index(name='Count')
                 fig_ratings = px.bar(
                     books_by_rating,
                     x='average_rating',
@@ -325,6 +327,7 @@ def visualizations_dashboard():
                 st.warning("No book data available for the selected filters.")
     else:
         st.warning("No book data available for visualizations.")
+
 
 
 
