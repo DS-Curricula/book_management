@@ -216,6 +216,7 @@ def books_dashboard(api_key):
 
 
 # Visualizations Dashboard
+
 def visualizations_dashboard():
     st.title("Visualizations Dashboard")
 
