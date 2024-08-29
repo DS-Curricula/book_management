@@ -219,28 +219,114 @@ def books_dashboard(api_key):
 def visualizations_dashboard():
     st.title("Visualizations Dashboard")
 
+    # Fetch the books and authors data
     books = get_books()
     authors = get_authors()
 
     if books:
+        # Convert books to a DataFrame
         df_books = pd.DataFrame(books)
+        
         if 'author_id' in df_books.columns:
+            # Map author_id to author names
             author_id_to_name = {author['id']: author['name'] for author in authors}
             df_books['author'] = df_books['author_id'].map(author_id_to_name)
             df_books.drop('author_id', axis=1, inplace=True)
 
-        st.subheader("Books by Year")
-        books_by_year = df_books.groupby('published_year').size().reset_index(name='Count')
-        fig_years = px.bar(books_by_year, x='published_year', y='Count', title='Number of Books by Year')
-        st.plotly_chart(fig_years, use_container_width=True)
+        # Sidebar filters
+        st.sidebar.title("Filters")
 
-        st.subheader("Books by Author")
-        books_by_author = df_books.groupby('author').size().reset_index(name='Count')
-        fig_authors = px.bar(books_by_author, x='author', y='Count', title='Number of Books by Author')
-        st.plotly_chart(fig_authors, use_container_width=True)
+        # Filter by Author
+        selected_author = st.sidebar.selectbox("Select Author", options=["All"] + list(author_id_to_name.values()))
 
+        # Filter by Published Year
+        min_year = int(df_books['published_year'].min())
+        max_year = int(df_books['published_year'].max())
+        selected_year = st.sidebar.slider("Select Published Year", min_value=min_year, max_value=max_year, value=(min_year, max_year))
+
+        # Filter by Average Rating (fixed range from 0.1 to 5)
+        selected_rating = st.sidebar.slider("Select Average Rating", min_value=0.1, max_value=5.0, value=(0.1, 5.0), step=0.1)
+
+        # Check if any filters are applied
+        filters_applied = selected_author != "All" or selected_year != (min_year, max_year) or selected_rating != (0.1, 5.0)
+
+        # Apply Filters Button
+        if st.sidebar.button("Apply Filters") or not filters_applied:
+            # Apply filters if any are set
+            if filters_applied:
+                if selected_author != "All":
+                    df_books = df_books[df_books['author'] == selected_author]
+
+                df_books = df_books[(df_books['published_year'] >= selected_year[0]) & (df_books['published_year'] <= selected_year[1])]
+                df_books = df_books[(df_books['average_rating'] >= selected_rating[0]) & (df_books['average_rating'] <= selected_rating[1])]
+
+            # Visualization 1: Books by Year
+            if not df_books.empty:
+                st.subheader(f"Books by Year")
+                books_by_year = df_books.groupby('published_year').size().reset_index(name='Count')
+                fig_years = px.bar(
+                    books_by_year,
+                    x='published_year',
+                    y='Count',
+                    title=f'Number of Books by Year',
+                    labels={"published_year": "Published Year", "Count": "Number of Books"},
+                    text='Count'
+                )
+                fig_years.update_traces(texttemplate='%{text:.2s}', textposition='outside')
+                fig_years.update_layout(
+                    uniformtext_minsize=8,
+                    uniformtext_mode='hide',
+                    xaxis=dict(tickmode='linear', tick0=min_year, dtick=1),
+                    yaxis=dict(title='Number of Books', range=[0, books_by_year['Count'].max() + 1]),
+                    title_x=0.5
+                )
+                st.plotly_chart(fig_years, use_container_width=True)
+
+                # Visualization 2: Books by Author
+                st.subheader(f"Books by Author")
+                books_by_author = df_books.groupby('author').size().reset_index(name='Count')
+                fig_authors = px.bar(
+                    books_by_author,
+                    x='author',
+                    y='Count',
+                    title='Number of Books by Author',
+                    labels={"author": "Author", "Count": "Number of Books"},
+                    text='Count'
+                )
+                fig_authors.update_traces(texttemplate='%{text:.2s}', textposition='outside')
+                fig_authors.update_layout(
+                    uniformtext_minsize=8,
+                    uniformtext_mode='hide',
+                    yaxis=dict(title='Number of Books', range=[0, books_by_author['Count'].max() + 1]),
+                    title_x=0.5
+                )
+                st.plotly_chart(fig_authors, use_container_width=True)
+
+                # Visualization 3: Books by Average Rating
+                st.subheader(f"Books by Average Rating")
+                books_by_rating = df_books.groupby('average_rating').size().reset_index(name='Count')
+                fig_ratings = px.bar(
+                    books_by_rating,
+                    x='average_rating',
+                    y='Count',
+                    title='Number of Books by Average Rating',
+                    labels={"average_rating": "Average Rating", "Count": "Number of Books"},
+                    text='Count'
+                )
+                fig_ratings.update_traces(texttemplate='%{text:.2s}', textposition='outside')
+                fig_ratings.update_layout(
+                    uniformtext_minsize=8,
+                    uniformtext_mode='hide',
+                    yaxis=dict(title='Number of Books', range=[0, books_by_rating['Count'].max() + 1]),
+                    title_x=0.5
+                )
+                st.plotly_chart(fig_ratings, use_container_width=True)
+            else:
+                st.warning("No book data available for the selected filters.")
     else:
         st.warning("No book data available for visualizations.")
+
+
 
 
 # Main app logic
