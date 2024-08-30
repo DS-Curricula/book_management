@@ -21,4 +21,4 @@ app.include_router(authors.router, prefix="/api/authors", tags=["Authors"])
 app.include_router(books.router, prefix="/api/books", tags=["Books"])
 app.include_router(api_key.router, prefix="/api/validate_key")
 
-# Add more routes or event handlers as needed
+
