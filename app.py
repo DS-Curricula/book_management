@@ -3,9 +3,12 @@ import requests
 import pandas as pd
 from datetime import datetime
 import plotly.express as px
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 # Define the base URL of the FastAPI application
-BASE_URL = 'http://127.0.0.1:8000/api'
+BASE_URL = os.getenv('BASE_URL')
 
 api_key_input = st.text_input("Enter API Key", type="password")
 
@@ -13,9 +16,6 @@ api_key_input = st.text_input("Enter API Key", type="password")
 def validate_api_key(api_key):
     headers = {"api-key": api_key}
     response = requests.get(f"{BASE_URL}/validate_key/", headers=headers)
-    print(f"Request Headers: {headers}")
-    print(f"Response Status Code: {response.status_code}")
-    print(f"Response Content: {response.content}")
     return response.status_code == 200
 
 
@@ -142,6 +142,7 @@ def books_dashboard(api_key):
     author_id_to_name = {author['id']: author['name'] for author in authors}
     for book in books:
         book['author'] = author_id_to_name.get(book['author_id'], 'Unknown')
+        book['genres'] = ', '.join(book['genres'])  # Display genres as a comma-separated list of names
         del book['author_id']
 
     df_books = pd.DataFrame(books)
@@ -153,19 +154,19 @@ def books_dashboard(api_key):
     selected_author_name = st.selectbox("Select Author", options=[author['name'] for author in authors],
                                         key="select_author_add")
     new_book_average_rating = st.number_input("Average Rating", min_value=0.0, max_value=5.0, step=0.01)
-    new_book_genres = st.text_input("Genres (comma-separated IDs)")
+    new_book_genres = st.text_input("Genres (comma-separated names)")
     new_book_year = st.number_input("Year", min_value=1440, max_value=datetime.now().year, step=1)
 
     if st.button("Add Book"):
         if new_book_title.strip() and new_book_genres.strip():
-            genres_list = [int(g.strip()) for g in new_book_genres.split(',') if g.strip().isdigit()]
+            genres_list = [g.strip() for g in new_book_genres.split(',') if g.strip()]
             selected_author_id = next((author['id'] for author in authors if author['name'] == selected_author_name),
                                       None)
             book_data = {
                 "title": new_book_title,
                 "author_id": selected_author_id,
                 "book_link": "",  # Assuming book_link is optional for creation
-                "genres": genres_list,
+                "genres": genres_list,  # List of genre names
                 "average_rating": new_book_average_rating,
                 "published_year": new_book_year
             }
@@ -188,20 +189,20 @@ def books_dashboard(api_key):
                                                 key="select_author_update")
             new_book_average_rating = st.number_input("Average Rating", min_value=0.0, max_value=5.0, step=0.01,
                                                       value=book['average_rating'])
-            new_book_genres = st.text_input("Genres (comma-separated IDs)",
-                                            value=', '.join(str(g) for g in book['genres']))
+            new_book_genres = st.text_input("Genres (comma-separated names)",
+                                            value=book['genres'])  # Show existing genres as a comma-separated string
             new_book_year = st.number_input("Year", min_value=1440, max_value=datetime.now().year, step=1,
                                             value=book['published_year'])
             book_id = book['id']
 
             if st.button("Update Book"):
-                genres_list = [int(g.strip()) for g in new_book_genres.split(',') if g.strip().isdigit()]
+                genres_list = [g.strip() for g in new_book_genres.split(',') if g.strip()]
                 book_data = {
                     "title": new_book_title,
                     "author_id": next((author['id'] for author in authors if author['name'] == selected_author_name),
                                       None),
                     "book_link": book.get('book_link', ""),
-                    "genres": genres_list,
+                    "genres": genres_list,  # Update with the list of genre names
                     "average_rating": new_book_average_rating,
                     "published_year": new_book_year
                 }
@@ -227,7 +228,7 @@ def visualizations_dashboard():
     if books:
         # Convert books to a DataFrame
         df_books = pd.DataFrame(books)
-        
+
         if 'author_id' in df_books.columns:
             # Map author_id to author names
             author_id_to_name = {author['id']: author['name'] for author in authors}
@@ -243,13 +244,16 @@ def visualizations_dashboard():
         # Filter by Published Year
         min_year = int(df_books['published_year'].min())
         max_year = int(df_books['published_year'].max())
-        selected_year = st.sidebar.slider("Select Published Year", min_value=min_year, max_value=max_year, value=(min_year, max_year))
+        selected_year = st.sidebar.slider("Select Published Year", min_value=min_year, max_value=max_year,
+                                          value=(min_year, max_year))
 
         # Filter by Average Rating (fixed range from 0.0 to 5)
-        selected_rating = st.sidebar.slider("Select Average Rating", min_value=0.0, max_value=5.0, value=(0.0, 5.0), step=0.1)
+        selected_rating = st.sidebar.slider("Select Average Rating", min_value=0.0, max_value=5.0, value=(0.0, 5.0),
+                                            step=0.1)
 
         # Check if any filters are applied
-        filters_applied = selected_author != "All" or selected_year != (min_year, max_year) or selected_rating != (0.0, 5.0)
+        filters_applied = selected_author != "All" or selected_year != (min_year, max_year) or selected_rating != (
+            0.0, 5.0)
 
         # Apply Filters Button
         if st.sidebar.button("Apply Filters") or not filters_applied:
@@ -260,8 +264,10 @@ def visualizations_dashboard():
                 if selected_author != "All":
                     filtered_books = filtered_books[filtered_books['author'] == selected_author]
 
-                filtered_books = filtered_books[(filtered_books['published_year'] >= selected_year[0]) & (filtered_books['published_year'] <= selected_year[1])]
-                filtered_books = filtered_books[(filtered_books['average_rating'] >= selected_rating[0]) & (filtered_books['average_rating'] <= selected_rating[1])]
+                filtered_books = filtered_books[(filtered_books['published_year'] >= selected_year[0]) & (
+                        filtered_books['published_year'] <= selected_year[1])]
+                filtered_books = filtered_books[(filtered_books['average_rating'] >= selected_rating[0]) & (
+                        filtered_books['average_rating'] <= selected_rating[1])]
 
             # Visualization 1: Books by Year
             if not filtered_books.empty:
@@ -279,33 +285,19 @@ def visualizations_dashboard():
                 fig_years.update_layout(
                     uniformtext_minsize=8,
                     uniformtext_mode='hide',
-                    xaxis=dict(tickmode='linear', tick0=min_year, dtick=1),
+                    xaxis=dict(
+                        tickmode='linear',
+                        tick0=min_year,
+                        dtick=5,  # Show a label every 5 years (adjust as needed)
+                        tickangle=-45,
+                        tickfont=dict(size=10)
+                    ),
                     yaxis=dict(title='Number of Books', range=[0, books_by_year['Count'].max() + 1]),
                     title_x=0.5
                 )
                 st.plotly_chart(fig_years, use_container_width=True)
 
-                # Visualization 2: Books by Author
-                st.subheader(f"Books by Author")
-                books_by_author = filtered_books.groupby('author').size().reset_index(name='Count')
-                fig_authors = px.bar(
-                    books_by_author,
-                    x='author',
-                    y='Count',
-                    title='Number of Books by Author',
-                    labels={"author": "Author", "Count": "Number of Books"},
-                    text='Count'
-                )
-                fig_authors.update_traces(texttemplate='%{text:.2s}', textposition='outside')
-                fig_authors.update_layout(
-                    uniformtext_minsize=8,
-                    uniformtext_mode='hide',
-                    yaxis=dict(title='Number of Books', range=[0, books_by_author['Count'].max() + 1]),
-                    title_x=0.5
-                )
-                st.plotly_chart(fig_authors, use_container_width=True)
-
-                # Visualization 3: Books by Average Rating
+                # Visualization 2: Books by Average Rating
                 st.subheader(f"Books by Average Rating")
                 books_by_rating = filtered_books.groupby('average_rating').size().reset_index(name='Count')
                 fig_ratings = px.bar(
@@ -328,9 +320,6 @@ def visualizations_dashboard():
                 st.warning("No book data available for the selected filters.")
     else:
         st.warning("No book data available for visualizations.")
-
-
-
 
 
 # Main app logic
